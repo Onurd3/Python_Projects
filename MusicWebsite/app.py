@@ -3,25 +3,25 @@ import os
 import sqlite3
 import hashlib
 
-# Sayfa Ayarları
-st.set_page_config(page_title="Studio Elite v9", page_icon="🎧", layout="wide")
+# ==========================================
+# 1. SAYFA AYARLARI & VERİTABANI
+# ==========================================
+st.set_page_config(page_title="Studio Elite v11", page_icon="🎧", layout="wide")
 
-# Klasör ve Veritabanı Yapılandırması
+# Klasörleri oluştur
 os.makedirs("songs", exist_ok=True)
 os.makedirs("covers", exist_ok=True)
-conn = sqlite3.connect("underground_v9.db", check_same_thread=False)
+
+# Veritabanı Bağlantısı (v11)
+conn = sqlite3.connect("underground_v11.db", check_same_thread=False)
 c = conn.cursor()
 c.execute("CREATE TABLE IF NOT EXISTS Users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT)")
 c.execute(
     "CREATE TABLE IF NOT EXISTS Songs (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, audio_path TEXT, cover_path TEXT, lyrics TEXT)")
 conn.commit()
 
-# Oturum Yönetimi
-if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
-if 'expanded_lyrics' not in st.session_state: st.session_state['expanded_lyrics'] = set()
 
-
-# Şifreleme Fonksiyonları
+# --- YARDIMCI FONKSİYONLAR ---
 def make_hashes(p): return hashlib.sha256(str.encode(p)).hexdigest()
 
 
@@ -29,218 +29,195 @@ def check_hashes(p, h): return make_hashes(p) == h
 
 
 # ==========================================
-#      ULTRA ESTETİK CSS (NEON ELITE)
+# 2. F5 KORUMASI (PERSISTENCE) & SESSION
+# ==========================================
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
+if 'expanded_lyrics' not in st.session_state: st.session_state['expanded_lyrics'] = set()
+
+# F5 Atıldığında URL'den kullanıcıyı geri çek
+if "user" in st.query_params and not st.session_state['logged_in']:
+    u_url = st.query_params["user"]
+    c.execute("SELECT id FROM Users WHERE username=?", (u_url,))
+    res = c.fetchone()
+    if res:
+        st.session_state.update({'logged_in': True, 'user_id': res[0], 'username': u_url})
+
+# ==========================================
+# 3. PREMIUM CSS TASARIMI
 # ==========================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap');
-
     * { font-family: 'Outfit', sans-serif; }
-    .stApp { 
-        background-color: #050505; 
-        background-image: radial-gradient(circle at 50% -20%, #1db95422, transparent);
-    }
+    .stApp { background-color: #050505; background-image: radial-gradient(circle at 2% 10%, #1db95411, transparent 20%); }
 
-    /* GİRİŞ KARTLARI */
+    /* Login Kutusu */
     .auth-card {
-        background: linear-gradient(145deg, #111, #080808);
-        padding: 50px;
-        border-radius: 40px;
-        border: 1px solid #1DB95433;
-        box-shadow: 0 20px 60px rgba(0,0,0,1), 0 0 20px rgba(29, 185, 84, 0.1);
-        text-align: center;
+        background: rgba(20, 20, 20, 0.9); padding: 50px; border-radius: 40px;
+        border: 1px solid #1DB95433; box-shadow: 0 20px 60px rgba(0,0,0,1); text-align: center;
     }
 
-    /* ŞARKI SATIRI (PREMIUM) */
-    .song-item {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 20px;
-        padding: 15px 25px;
-        margin-bottom: 12px;
-        transition: 0.4s ease;
+    /* Spotify Satır Stili */
+    .song-row {
+        background: rgba(255, 255, 255, 0.02); border-radius: 12px;
+        padding: 10px 20px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.03);
+        transition: 0.3s;
     }
-    .song-item:hover {
-        background: rgba(29, 185, 84, 0.06);
-        border-color: #1DB954;
-        box-shadow: 0 0 30px rgba(29, 185, 84, 0.1);
-        transform: translateX(10px);
+    .song-row:hover { background: rgba(29, 185, 84, 0.05); border-color: #1DB95466; transform: translateX(5px); }
+
+    /* Lyrics Satır Koruması (PRE-WRAP) */
+    .lyrics-box {
+        background: #000; border-left: 4px solid #1DB954;
+        padding: 15px; border-radius: 6px; color: #aaa;
+        font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; /* Satırları korur */
     }
 
-    /* LYRICS BÖLGESİ */
-    .lyrics-view {
-        background: #000;
-        border-left: 4px solid #1DB954;
-        padding: 20px;
-        border-radius: 10px;
-        color: #888;
-        font-size: 0.9rem;
-        line-height: 1.7;
-        white-space: pre-wrap;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #1DB954; }
 
-    /* KULLANICI ROZETİ */
-    .user-tag {
-        background: #1DB954;
-        color: #000;
-        padding: 5px 15px;
-        border-radius: 30px;
-        font-weight: 800;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-    }
-
-    /* SİLE BUTONU */
-    div.stButton > button.delete-btn {
-        background: transparent !important;
-        border: 1px solid #ff4b4b44 !important;
-        color: #ff4b4b !important;
-        border-radius: 12px !important;
-    }
-    div.stButton > button.delete-btn:hover {
-        background: #ff4b4b !important;
-        color: white !important;
-    }
+    div.stButton > button { border-radius: 20px; font-weight: 700; transition: 0.2s; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- GİRİŞ / KAYIT SİSTEMİ ---
+# ==========================================
+# 4. GİRİŞ & KAYIT EKRANI
+# ==========================================
 if not st.session_state['logged_in']:
-    _, center, _ = st.columns([1, 1.4, 1])
+    _, center, _ = st.columns([1, 1.3, 1])
     with center:
         st.markdown('<div class="auth-card">', unsafe_allow_html=True)
-        st.markdown('<h1 style="color:#1DB954; letter-spacing:-2px; font-size:3rem;">ELITE STUDIO</h1>',
-                    unsafe_allow_html=True)
-        st.markdown('<p style="color:#666;">Private Recording Vault Access</p>', unsafe_allow_html=True)
+        st.markdown('<h1 style="color:#1DB954; margin-bottom:0;">STUDIO ELITE</h1>', unsafe_allow_html=True)
+        st.caption("v11.0 - Private Artist Access")
+        tab_log, tab_reg = st.tabs(["LOGIN", "REGISTER"])
 
-        choice = st.tabs(["🔒 SECURE LOGIN", "✍️ NEW ARTIST"])
-
-        with choice[0]:
-            user = st.text_input("Alias", key="login_u")
-            pw = st.text_input("Secret", type='password', key="login_p")
+        with tab_log:
+            u_in = st.text_input("Username", key="l_u")
+            p_in = st.text_input("Password", type='password', key="l_p")
             if st.button("OPEN VAULT", use_container_width=True):
-                c.execute("SELECT id, password FROM Users WHERE username=?", (user,))
-                result = c.fetchone()
-                if result and check_hashes(pw, result[1]):
-                    st.session_state.update({'logged_in': True, 'user_id': result[0], 'username': user})
+                c.execute("SELECT id, password FROM Users WHERE username=?", (u_in,))
+                res = c.fetchone()
+                if res and check_hashes(p_in, res[1]):
+                    st.session_state.update({'logged_in': True, 'user_id': res[0], 'username': u_in})
+                    st.query_params["user"] = u_in  # F5 Koruması için URL'ye yaz
                     st.rerun()
                 else:
-                    st.error("Access Denied: Invalid credentials.")
+                    st.error("Access Refused.")
 
-        with choice[1]:
-            new_user = st.text_input("Choose Alias", key="reg_u")
-            new_pw = st.text_input("Choose Secret", type='password', key="reg_p")
-            if st.button("CREATE ACCOUNT", use_container_width=True):
-                if new_user and new_pw:
+        with tab_reg:
+            un = st.text_input("New Artist Name", key="r_u")
+            up = st.text_input("New Secret Pass", type='password', key="r_p")
+            if st.button("CREATE VAULT", use_container_width=True):
+                if un and up:
                     try:
-                        c.execute("INSERT INTO Users (username, password) VALUES (?, ?)",
-                                  (new_user, make_hashes(new_pw)))
+                        c.execute("INSERT INTO Users (username, password) VALUES (?, ?)", (un, make_hashes(up)))
                         conn.commit()
-                        st.success("Vault Created. Switch to Login tab.")
+                        st.success("Artist Registered! Please Login.")
                     except:
-                        st.error("Alias already taken by another artist.")
-                else:
-                    st.error("Please fill all fields.")
+                        st.error("Alias already taken.")
         st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- ANA STÜDYO ARAYÜZÜ ---
+# ==========================================
+# 5. ANA STÜDYO ARAYÜZÜ (Giriş Yapıldı)
+# ==========================================
+
+# --- Yan Panel (Sidebar) ---
 with st.sidebar:
-    st.markdown(f"### 🎤 <span style='color:#1DB954'>{st.session_state['username']}</span>", unsafe_allow_html=True)
-    st.markdown(f"<span class='user-tag'>Authorized Artist</span>", unsafe_allow_html=True)
+    st.markdown(f"### 🎤 Artist: <span style='color:#1DB954'>{st.session_state['username']}</span>",
+                unsafe_allow_html=True)
+    st.caption(f"Artist ID: #{st.session_state['user_id']}")
 
     if st.button("LOGOUT", use_container_width=True):
-        st.session_state['logged_in'] = False
+        st.session_state.clear()
+        st.query_params.clear()
         st.rerun()
 
     st.markdown("---")
     with st.expander("📀 DROP NEW TRACK", expanded=True):
-        audio_file = st.file_uploader("Audio (MP3/WAV)", type=["mp3", "wav"])
-        cover_art = st.file_uploader("Cover Art", type=["jpg", "png"])
-        lyrics_txt = st.text_area("Lyrics / Bars")
+        audio_f = st.file_uploader("Audio (MP3/WAV)", type=["mp3", "wav"])
+        cover_f = st.file_uploader("Cover Art", type=["jpg", "png"])
+        lyrics_f = st.text_area("Write Lyrics Here")
 
-        if st.button("PUSH TO VAULT", use_container_width=True) and audio_file:
-            # Dosya İzolasyonu: {user_id}_{filename}
-            a_path = os.path.join("songs", f"{st.session_state['user_id']}_{audio_file.name}")
+        if st.button("PUSH TO VAULT", use_container_width=True) and audio_f:
+            # Dosya İzolasyonu (User ID Prefix)
+            a_path = os.path.join("songs", f"u{st.session_state['user_id']}_{audio_f.name}")
             with open(a_path, "wb") as f:
-                f.write(audio_file.getbuffer())
+                f.write(audio_f.getbuffer())
 
             c_path = ""
-            if cover_art:
-                c_path = os.path.join("covers", f"{st.session_state['user_id']}_{cover_art.name}")
-                with open(c_path, "wb") as f: f.write(cover_art.getbuffer())
+            if cover_f:
+                c_path = os.path.join("covers", f"u{st.session_state['user_id']}_{cover_f.name}")
+                with open(c_path, "wb") as f: f.write(cover_f.getbuffer())
 
             c.execute("INSERT INTO Songs (user_id, name, audio_path, cover_path, lyrics) VALUES (?, ?, ?, ?, ?)",
-                      (st.session_state['user_id'], audio_file.name, a_path, c_path, lyrics_txt))
+                      (st.session_state['user_id'], audio_f.name, a_path, c_path, lyrics_f))
             conn.commit()
             st.rerun()
 
+# --- Ana Liste (Kişisel Kütüphane) ---
 st.markdown(f'# 🗄️ My <span style="color:#1DB954">Encrypted Vault</span>', unsafe_allow_html=True)
-st.markdown(f"<p style='color:#444;'>Artist: {st.session_state['username']}</p>", unsafe_allow_html=True)
 
-# Sadece giriş yapan kullanıcıya ait şarkıları çek
+# KRİTİK: Sadece aktif kullanıcı ID'sine ait şarkıları çek
 c.execute("SELECT id, name, audio_path, cover_path, lyrics FROM Songs WHERE user_id=? ORDER BY id DESC",
           (st.session_state['user_id'],))
 tracks = c.fetchall()
 
 if not tracks:
-    st.info("Vault is empty. Use the sidebar to upload your private recordings.")
+    st.info("Your vault is empty, artist. Record something to see it here.")
 else:
-    # Spotify Header
-    h1, h2, h3, h4, h5 = st.columns([0.1, 0.4, 2, 2, 0.2])
-    h1.caption("#")
-    h2.caption("COVER")
-    h3.caption("TRACK DETAILS")
-    h4.caption("LISTEN & LYRICS")
-    h5.caption("🗑️")
+    # Başlık Satırı (Spotify Stili)
+    h_idx, h_img, h_track, h_play, h_del = st.columns([0.2, 0.4, 1.5, 3, 0.2])
+    h_idx.caption("#")
+    h_img.caption("COVER")
+    h_track.caption("TRACK")
+    h_play.caption("LISTEN & LYRICS")
+    h_del.caption("🗑️")
+    st.markdown("<hr style='margin:0; border-color:#222;'>", unsafe_allow_html=True)
 
     for i, (tid, name, ap, cp, lyr) in enumerate(tracks):
-        st.markdown('<div class="song-item">', unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns([0.1, 0.4, 2, 2, 0.2])
+        st.markdown('<div class="song-row">', unsafe_allow_html=True)
+        col_idx, col_img, col_track, col_play, col_del = st.columns([0.2, 0.4, 1.5, 3, 0.2])
 
-        # Sıra No
-        c1.markdown(f"<p style='color:#444; margin-top:15px;'>{len(tracks) - i}</p>", unsafe_allow_html=True)
+        col_idx.markdown(f"<p style='color:#444; margin-top:15px;'>{len(tracks) - i}</p>", unsafe_allow_html=True)
 
-        # Kapak
-        with c2:
+        with col_img:
             if cp and os.path.exists(cp):
-                st.image(cp, width=50)
+                st.image(cp, width=45)
             else:
-                st.image("https://cdn-icons-png.flaticon.com/512/3002/3002787.png", width=50)
+                st.image("https://cdn-icons-png.flaticon.com/512/3002/3002787.png", width=45)
 
-        # İsim ve Sanatçı
-        with c3:
-            st.markdown(f"<p style='color:#fff; font-weight:600; font-size:1.1rem; margin:0;'>{name}</p>",
-                        unsafe_allow_html=True)
-            st.markdown(f"<p style='color:#1DB954; font-size:0.8rem; margin:0;'>{st.session_state['username']}</p>",
+        with col_track:
+            st.markdown(f"**{name}**")
+            st.markdown(f"<span style='color:#1DB954; font-size:0.8rem;'>{st.session_state['username']}</span>",
                         unsafe_allow_html=True)
 
-        # Oynatıcı ve Sözler
-        with c4:
+        with col_play:
             st.audio(ap)
-            content = lyr if lyr else "No lyrics recorded for this track."
-            lines = content.split('\n')
-
-            # Dinamik Lyrics Genişletme
+            # Lyrics "Read More" Mantığı
+            full_lyr = lyr if lyr else "No lyrics recorded."
+            lines = full_lyr.split('\n')
             if len(lines) > 2 and tid not in st.session_state['expanded_lyrics']:
-                st.markdown(f'<div class="lyrics-view">{"/".join(lines[:2])}...</div>', unsafe_allow_html=True)
-                if st.button("Read Full Lyrics", key=f"btn_more_{tid}"):
+                # İlk 2 satırı göster
+                st.markdown(f'<div class="lyrics-box">{"/".join(lines[:2])}...</div>', unsafe_allow_html=True)
+                if st.button("Read More", key=f"rm_{tid}"):
                     st.session_state['expanded_lyrics'].add(tid)
                     st.rerun()
             else:
-                st.markdown(f'<div class="lyrics-view">{content}</div>', unsafe_allow_html=True)
-                if len(lines) > 2 and st.button("Collapse", key=f"btn_less_{tid}"):
-                    st.session_state['expanded_lyrics'].remove(tid)
-                    st.rerun()
+                st.markdown(f'<div class="lyrics-box">{full_lyr}</div>', unsafe_allow_html=True)
+                if len(lines) > 2:
+                    if st.button("Collapse", key=f"ls_{tid}"):
+                        st.session_state['expanded_lyrics'].remove(tid)
+                        st.rerun()
 
-        # Silme
-        with c5:
-            if st.button("🗑️", key=f"del_{tid}", type="secondary"):
+        with col_del:
+            if st.button("🗑️", key=f"del_{tid}"):
                 c.execute("DELETE FROM Songs WHERE id=?", (tid,))
                 conn.commit()
                 st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
-st.caption("Studio Black Elite Edition v9.0 | Private Artist Isolation Mode")
+st.caption(
+    "⚠️ Disclaimer: This platform is for non-profit, demonstrational purposes only. All rights to the beats belong to their original creators.")
