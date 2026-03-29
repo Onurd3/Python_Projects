@@ -6,7 +6,7 @@ import hashlib
 # ==========================================
 # 1. SAYFA AYARLARI & VERİTABANI
 # ==========================================
-st.set_page_config(page_title="Studio Elite v12", page_icon="🎧", layout="wide")
+st.set_page_config(page_title="Studio Elite v12.1", page_icon="🎧", layout="wide")
 
 # Klasörleri oluştur
 os.makedirs("songs", exist_ok=True)
@@ -84,7 +84,7 @@ if not st.session_state['logged_in']:
     with center:
         st.markdown('<div class="auth-card">', unsafe_allow_html=True)
         st.markdown('<h1 style="color:#1DB954; margin-bottom:0;">STUDIO ELITE</h1>', unsafe_allow_html=True)
-        st.caption("v12.0 - iOS Optimized")
+        st.caption("v12.1 - Master Access")
         tab_log, tab_reg = st.tabs(["LOGIN", "REGISTER"])
         
         with tab_log:
@@ -175,19 +175,12 @@ else:
             st.markdown(f"<span style='color:#1DB954; font-size:0.8rem;'>{st.session_state['username']}</span>", unsafe_allow_html=True)
             
         with col_play:
-            with col_play:
-            # --- iOS FİXİ (GÜNCELLENDİ) ---
             if os.path.exists(ap):
-                # Byte okuma işlemini tamamen sildik, Safari'ye sadece dosya yolunu (ap) ve formatı veriyoruz
+                # iOS için format açıkça belirtildi, parça parça akış (stream) destekliyor
                 mime_type = "audio/wav" if ap.lower().endswith(".wav") else "audio/mpeg"
                 st.audio(ap, format=mime_type)
             else:
                 st.error("Audio missing")
-            # ------------------------------
-
-            full_lyr = lyr if lyr else "No lyrics recorded."
-            lines = full_lyr.split('\n')
-            # ... (Alt kısımdaki Read More mantığı aynı kalacak, dokunma)
 
             full_lyr = lyr if lyr else "No lyrics recorded."
             lines = full_lyr.split('\n')
