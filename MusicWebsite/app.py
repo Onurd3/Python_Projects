@@ -175,16 +175,19 @@ else:
             st.markdown(f"<span style='color:#1DB954; font-size:0.8rem;'>{st.session_state['username']}</span>", unsafe_allow_html=True)
             
         with col_play:
-            # --- iOS FİXİ BURADA BAŞLIYOR ---
+            with col_play:
+            # --- iOS FİXİ (GÜNCELLENDİ) ---
             if os.path.exists(ap):
-                with open(ap, "rb") as audio_file:
-                    audio_bytes = audio_file.read()
-                # Dosya uzantısına göre format belirliyoruz ki iPhone ne çaldığını bilsin
+                # Byte okuma işlemini tamamen sildik, Safari'ye sadece dosya yolunu (ap) ve formatı veriyoruz
                 mime_type = "audio/wav" if ap.lower().endswith(".wav") else "audio/mpeg"
-                st.audio(audio_bytes, format=mime_type)
+                st.audio(ap, format=mime_type)
             else:
                 st.error("Audio missing")
-            # --- iOS FİXİ BURADA BİTİYOR ---
+            # ------------------------------
+
+            full_lyr = lyr if lyr else "No lyrics recorded."
+            lines = full_lyr.split('\n')
+            # ... (Alt kısımdaki Read More mantığı aynı kalacak, dokunma)
 
             full_lyr = lyr if lyr else "No lyrics recorded."
             lines = full_lyr.split('\n')
