@@ -1,7 +1,8 @@
 from turtle import Turtle
 import random
 
-class food(Turtle):
+
+class Food(Turtle):
     def __init__(self):
         super().__init__()
         self.shape("circle")
@@ -11,6 +12,7 @@ class food(Turtle):
         self.refresh()
 
     def refresh(self):
-        random_x = random.randint(-380, 380)
+        random_x = random.randint(-300, 300)
         random_y = random.randint(-280, 280)
         self.goto(random_x, random_y) 
+    
