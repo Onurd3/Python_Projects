@@ -1,3 +1,6 @@
+import sys
+print(sys.executable)
+
 import customtkinter as ctk
 import math
 

@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./My_Projects/SpaceWar",
+        "./My_Projects/Space_War"
+    ]
+}
